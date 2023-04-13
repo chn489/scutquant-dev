@@ -108,8 +108,8 @@ def accuracy(pred, y, sign=">="):
     return len(data_true) / len(data)
 
 
-def report_all(user_account, benchmark, show_raw_value=False, excess_return=True, risk=True, rf=0.03, freq=1, time=None,
-               figsize=(10, 6)):
+def report_all(user_account, benchmark, show_raw_value=False, excess_return=True, risk=True, turnover=True,
+               rf=0.03, freq=1, time=None, figsize=(10, 6)):
     if time is not None:
         time = pd.to_datetime(time, format='%Y-%m-%d')
 
@@ -180,6 +180,10 @@ def report_all(user_account, benchmark, show_raw_value=False, excess_return=True
     if risk:
         risk = pd.DataFrame({'risk': user_account.risk_curve}, index=time)
         plot([risk], label=['risk_degree'], title='Risk Degree', ylabel='value', figsize=figsize)
+
+    if turnover:
+        risk = pd.DataFrame({'turnover': user_account.turnover}, index=time)
+        plot([risk], label=['turnover'], title='Turnover', figsize=figsize)
 
 
 def group_return_ana(pred, y_true, n=5, groupby='time', figsize=(10, 6)):
