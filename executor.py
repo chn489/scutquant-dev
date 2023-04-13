@@ -90,7 +90,6 @@ class Executor:
                 self.ben_cash -= self.ben_position[code] * self.price[code]
         """
 
-
     def create_account(self):
         self.user_account = account.Account(self.init_cash, self.position, self.available, self.price)
         self.benchmark = account.Account(self.ben_cash, self.ben_position, {}, self.price.copy())
