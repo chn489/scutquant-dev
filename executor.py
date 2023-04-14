@@ -20,7 +20,7 @@ def prepare(predict, data, price, volume, real_ret):
     predict['volume'] = data1[volume]  # 当天的交易量, 假设交易量不会发生大的跳跃
     predict.index.names = ['time', 'code']
     predict["price"] = predict["price"].groupby(["code"]).shift(-1)  # 指令是T时生成的, 但是T+1执行, 所以是shift(-1)
-    predict["R"] = real_ret  # 本来就是T+2对T+1的收益率, 因此不用前移
+    predict["R"] = real_ret[real_ret.index.isin(predict.index)]  # 本来就是T+2对T+1的收益率, 因此不用前移
     return predict.dropna()
 
 

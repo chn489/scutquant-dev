@@ -225,8 +225,8 @@ def DELTA(X, ret_group, idx_return, windows, name="DELTA"):
     # The delta of greek value
     features = pd.DataFrame()
     for w in windows:
-        cov = ret_group.rolling(w).cov(idx_return)
-        var = ret_group.rolling(w).var()
+        cov = ret_group.transform(lambda x: x.rolling(w).cov(idx_return))
+        var = ret_group.transform(lambda x: x.rolling(w).var())
         features[name + str(w)] = cov / var
     return pd.concat([X, features], axis=1)
 
