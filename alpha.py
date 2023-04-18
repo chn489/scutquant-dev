@@ -87,7 +87,6 @@ def cal_psy(price: pd.Series, windows: int = 10) -> pd.Series:
 
 def VaR(x: pd.Series, prob=0.05) -> float:
     """
-
     :param x: pd.Series
     :param prob: float
     :return: float
@@ -206,10 +205,10 @@ def PSY(X, data_group, windows, name="PSY"):
 def PERF(X, data, group_idx, name="PERF"):
     # performance: 股票当日收益率相对大盘的表现
     features = pd.DataFrame()
-    features[name + "1"] = data / group_idx.mean()
+    features[name + "1"] = data / (group_idx.mean() + 1e-12)
     features[name + "2"] = data / group_idx.std()
-    features[name + "3"] = data / group_idx.max()
-    features[name + "4"] = data / group_idx.min()
+    features[name + "3"] = data / (group_idx.max() + 1e-12)
+    features[name + "4"] = data / (group_idx.min() + 1e-12)
     return pd.concat([X, features], axis=1)
 
 
@@ -217,15 +216,15 @@ def IDX(X, data, idx, windows, name="IDX"):
     # 收盘价相对开盘价的变化, 与大盘的移动平均线对比
     features = pd.DataFrame()
     for w in windows:
-        features[name + "1_" + str(w)] = data / idx.rolling(w).mean()
-        features[name + "2_" + str(w)] = data / idx.rolling(w).max()
-        features[name + "3_" + str(w)] = data / idx.rolling(w).min()
-        features[name + "4_" + str(w)] = data / idx.rolling(w).median()
+        features[name + "1_" + str(w)] = data / (idx.rolling(w).mean() + 1e-12)
+        features[name + "2_" + str(w)] = data / (idx.rolling(w).max() + 1e-12)
+        features[name + "3_" + str(w)] = data / (idx.rolling(w).min() + 1e-12)
+        features[name + "4_" + str(w)] = data / (idx.rolling(w).median() + 1e-12)
     return pd.concat([X, features], axis=1)
 
 
 def RSV(X, data, low_group, high_group, windows, name="RSV"):
-    # Represent the price position between upper and lower resistent price for past d days.
+    # Represent the price position between upper and lower resistant price for past d days.
     features = pd.DataFrame()
     for w in windows:
         LOW = low_group.transform(lambda x: x.rolling(w).min())
@@ -234,17 +233,31 @@ def RSV(X, data, low_group, high_group, windows, name="RSV"):
     return pd.concat([X, features], axis=1)
 
 
-def DELTA(X, ret_group, idx_return, windows, name="DELTA"):
-    # The delta of greek value
+# Greeks for stocks
+def DELTA(X, ret_group, idx_return, name="DELTA"):
+    # The delta of option greeks
+    # DELTA = partial P / partial S. Let P be R_it and S be R_m
     features = pd.DataFrame()
-    for w in windows:
-        cov = ret_group.transform(lambda x: x.rolling(w).cov(idx_return))
-        var = ret_group.transform(lambda x: x.rolling(w).var())
-        features[name + str(w)] = cov / var
+    features[name] = ret_group.diff() / (idx_return.diff() + 1e-12)
     return pd.concat([X, features], axis=1)
 
 
-# todo: 增加其它希腊值: gamma, vega, rho, ...
+def GAMMA(X, idx_return, name="GAMMA"):
+    # The gamma of greek value, which equals partial DELTA / partial S
+    # suppose delta DELTA  = gamma * delta S, which means gamma = delta DELTA / delta S
+    features = pd.DataFrame()
+    features[name] = X["DELTA"].groupby(X.index.names[1]).diff() / (idx_return.diff() + 1e-12)
+    return pd.concat([X, features], axis=1)
+
+
+def VEGA(X, ret_group, windows, name="VEGA"):
+    # The vega of greek value
+    # delta p / delta sigma
+    delta_ret = ret_group.diff()
+    features = pd.DataFrame()
+    for w in windows:
+        features[name + str(w)] = delta_ret / ret_group.transform(lambda x: x.rolling(w).std())
+    return pd.concat([X, features], axis=1)
 
 
 # 来自金融风险管理的因子
@@ -361,7 +374,9 @@ def make_factors(kwargs=None, windows=None, fillna=False):
         X = PSY(X, group_c, windows=windows)
 
         # 来自金融工程的指标
-        # X = DELTA(X, group_r, mean_ret, windows=windows)
+        X = DELTA(X, group_r, mean_ret)
+        X = GAMMA(X, mean_ret)
+        X = VEGA(X, group_r, windows=windows)
         # 来自金融风险管理
         # X = VAR(X, group_r, windows=windows)
         del mean_ret, group_r, group_r_rank
